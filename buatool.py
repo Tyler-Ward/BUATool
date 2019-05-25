@@ -9,6 +9,8 @@ import click
 
 def calculateSHA1Sum(filename):
     sha1 = hashlib.sha1()
+    if(not os.path.isfile(filename)):
+        raise ValueError("Provided path is not a file")
     with open(filename, 'rb') as f:
         while True:
             data = f.read(65536)
@@ -18,8 +20,8 @@ def calculateSHA1Sum(filename):
     return sha1.hexdigest()
 
 
-def generateLibraryRecords(directory,sha1=False):
-    """Create a library record for a target directory"""
+def generateIndex(directory,sha1=False):
+    """Create an index for a target directory"""
 
     fileindex=[]
 
@@ -31,19 +33,29 @@ def generateLibraryRecords(directory,sha1=False):
                         'folder':dirpath,
                         'fullpath':dirpath+"/"+filename,
                         }
-                if sha1:
-                    filedetails['sha1']=calculateSHA1Sum(dirpath+"/"+filename)
                 fileindex.append(filedetails)
             except (FileNotFoundError,PermissionError):
                 print("Unable to index "+dirpath+"/"+filename)
     return fileindex
 
+def calculateIndexChecksums(index):
+    import progressbar
+
+    bar = progressbar.ProgressBar(max_value=len(index),redirect_stdout=True)
+
+    for filedetails in index:
+        try:
+            # print(filedetails["fullpath"])
+            filedetails['sha1']=calculateSHA1Sum(filedetails["fullpath"])
+        except (ValueError,FileNotFoundError,PermissionError):
+            print("Unable to calculate checksum for ",filedetails["fullpath"])
+        bar.update(bar.value+1)
 
 def findFile(name,index):
     return(list(filter(lambda filed: filed['name'] == name,index)))
 
 def findHash(sha1,index):
-    return(list(filter(lambda filed: filed['sha1'] == sha1,index)))
+    return(list(filter(lambda filed: 'sha1' in filed and filed['sha1'] == sha1,index)))
 
 def findMatches(filename,filedir,index,sha1=False):
 
@@ -100,9 +112,16 @@ def loadIndex(location):
 def buatool(target,reference,sha1,load_index,save_index):
 
     if load_index != None:
+        print("Loading Index from file")
         index = loadIndex(load_index)
+        print("Index loaded")
     else:
-        index = generateLibraryRecords(reference,sha1=sha1)
+        print("Indexing files on disk")
+        index = generateIndex(reference)
+        if sha1:
+            print("Calculating checksums")
+            calculateIndexChecksums(index)
+            print("Checksums calculated")
     if save_index != None:
         saveIndex(index,save_index)
     evaluateDirectory(target,index,sha1=sha1)
