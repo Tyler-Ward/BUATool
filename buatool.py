@@ -80,17 +80,26 @@ def findMatches(filename,filedir,index,sha1=False):
 
 
 
-def evaluateDirectory(directory,index,sha1=False):
+def evaluateDirectory(directory,index,sha1=False,delete=False):
     """Evaluates a directory an produces a result list"""
 
     for (dirpath, dirnames, filenames) in os.walk(directory):
         for filename in filenames:
-            matches = findMatches(filename,dirpath,index,sha1=sha1)
-            if len(matches)==0:
-                print("Missing:"+dirpath+"/"+filename)
-            else:
-                if len(list(filter(lambda filed: filed['name'] == filename,matches)))==0:
-                    print("Renamed:"+dirpath+"/"+filename+"-->"+matches[0]['fullpath'])
+            try:
+                matches = findMatches(filename,dirpath,index,sha1=sha1)
+                if len(matches)==0:
+                    print("Missing:"+dirpath+"/"+filename)
+                else:
+                    if len(list(filter(lambda filed: filed['name'] == filename,matches)))==0:
+                        print("Renamed:"+dirpath+"/"+filename+"-->"+matches[0]['fullpath'])
+                    else:
+                        print("Matched:"+dirpath+"/"+filename+"-->"+matches[0]['fullpath'])
+                    if delete:
+                        print("Deleting: "+dirpath+"/"+filename)
+                        os.remove(dirpath+"/"+filename);
+            except Exception as error:
+                print("Unable to process file")
+
 
 def saveIndex(index,location):
     import json
@@ -105,11 +114,12 @@ def loadIndex(location):
 
 @click.command()
 @click.option('--sha1',default=False,is_flag=True,help="Compare files using their sha1sum as well as the name")
+@click.option('--rm',default=False,is_flag=True,help="automaticly delete matched files")
 @click.option('--save-index',default=None,help="Location to save index to for later use")
 @click.option('--load-index',default=None,help="Location to save index to for later use")
 @click.argument('target')
 @click.argument('reference')
-def buatool(target,reference,sha1,load_index,save_index):
+def buatool(target,reference,sha1,rm,load_index,save_index):
 
     if load_index != None:
         print("Loading Index from file")
@@ -124,7 +134,7 @@ def buatool(target,reference,sha1,load_index,save_index):
             print("Checksums calculated")
     if save_index != None:
         saveIndex(index,save_index)
-    evaluateDirectory(target,index,sha1=sha1)
+    evaluateDirectory(target,index,sha1=sha1,delete=rm)
 
 
 if __name__ == "__main__":
