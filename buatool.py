@@ -60,11 +60,17 @@ def findHash(sha1,index):
 def findMatches(filename,filedir,index,sha1=False):
 
     matches = []
-    filesha1 = calculateSHA1Sum(filedir+"/"+filename)
+    if sha1:
+        filesha1 = calculateSHA1Sum(filedir+"/"+filename)
+        if filesha1 == "da39a3ee5e6b4b0d3255bfef95601890afd80709":
+            sha1=False
 
     namematches = findFile(filename,index)
     for match in namematches:
         if sha1 and filesha1 == match['sha1']:
+            if filecmp.cmp(filedir+"/"+filename,match['fullpath']):
+                matches.append(match)
+        if not sha1:
             if filecmp.cmp(filedir+"/"+filename,match['fullpath']):
                 matches.append(match)
     if len(matches)>0:
@@ -87,6 +93,11 @@ def evaluateDirectory(directory,index,sha1=False,delete=False):
         for filename in filenames:
             try:
                 matches = findMatches(filename,dirpath,index,sha1=sha1)
+            except Exception as error:
+                print("Issue evaluating checksum")
+                print(error)
+                continue
+            try:
                 if len(matches)==0:
                     print("Missing:"+dirpath+"/"+filename)
                 else:
