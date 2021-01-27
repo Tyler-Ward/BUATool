@@ -75,4 +75,6 @@ class DirectoryIndex:
         with open(location,"r") as indexInput:
             data = json.load(indexInput)
             self.directory_path = data["directory"]
+            self.features = data["features"]
+            self.indexed_on = data["indexed_on"]
             self.index = data["index"]

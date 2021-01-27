@@ -78,16 +78,21 @@ def cli():
 def buatool(target,reference,sha1,rm,load_index,save_index):
 
     reference_index = DirectoryIndex()
-
     if load_index != None:
         print("Loading Index from file")
         reference_index.loadIndex(load_index)
+        if sha1:
+            if not "sha1" in reference_index.features:
+                print("Index missing checksums, Update index or run without checksums")
+                exit(1)
         print("Index loaded")
     else:
         print("Indexing files on disk")
         reference_index.generateIndex(reference,sha1=sha1)
     if save_index != None:
         reference_index.saveIndex(save_index)
+
+
     evaluateDirectory(target,reference_index,sha1=sha1,delete=rm)
 
 @cli.command()
@@ -99,6 +104,17 @@ def buildIndex(target,save_location,sha1):
     index.generateIndex(target,sha1=sha1)
     index.saveIndex(save_location)
 
+
+@cli.command()
+@click.argument('index')
+def index_info(index):
+    data_index = DirectoryIndex()
+    data_index.loadIndex(index)
+
+    print("Index info")
+    print("Path: " + data_index.directory_path)
+    print("Date: " + data_index.indexed_on)
+    print("File count: " + str(len(data_index.index)))
 
 
 if __name__ == "__main__":
