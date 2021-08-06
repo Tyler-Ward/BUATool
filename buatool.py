@@ -9,59 +9,62 @@ from util import calculateSHA1Sum
 from index import DirectoryIndex
 
 
-def findMatches(filename,filedir,index,sha1=False):
+def findMatches(filename,index,sha1=False):
 
     matches = []
     if sha1:
-        filesha1 = calculateSHA1Sum(filedir+"/"+filename)
+        filesha1 = calculateSHA1Sum(filename)
         if filesha1 == "da39a3ee5e6b4b0d3255bfef95601890afd80709":
             sha1=False
 
-    namematches = index.findFile(filename)
+    namematches = index.findFile(filename.split("/")[-1])
     for match in namematches:
         if sha1 and filesha1 == match['sha1']:
-            if filecmp.cmp(filedir+"/"+filename,index.directory_path + "/" + match['path']):
+            if filecmp.cmp(filename,index.directory_path + "/" + match['path']):
                 matches.append(match)
         if not sha1:
-            if filecmp.cmp(filedir+"/"+filename,index.directory_path + "/" + match['path']):
+            if filecmp.cmp(filename,index.directory_path + "/" + match['path']):
                 matches.append(match)
     if len(matches)>0:
         return matches
     if sha1:
         hashmatches = index.findHash(filesha1)
         for match in hashmatches:
-            if filecmp.cmp(filedir+"/"+filename,index.directory_path + "/" + match['path']):
+            if filecmp.cmp(filename,index.directory_path + "/" + match['path']):
                 matches.append(match)
 
     return matches
 
 
+def findFile(filename,index,sha1=False,delete=False):
+    try:
+        matches = findMatches(filename,index,sha1=sha1)
+    except Exception as error:
+        print("Issue evaluating checksum")
+        print(error)
+        return
+    try:
+        if len(matches)==0:
+            print("Missing:"+filename)
+        else:
+            if len(list(filter(lambda filed: filed['name'] == filename,matches)))==0:
+                print("Renamed:"+filename+"-->"+matches[0]['path'])
+            else:
+                print("Matched:"+filename+"-->"+matches[0]['path'])
+            if delete:
+                print("Deleting: "+filename)
+                os.remove(filename);
+    except Exception as error:
+        print("Unable to process file")
+
 
 
 def evaluateDirectory(directory,index,sha1=False,delete=False):
     """Evaluates a directory an produces a result list"""
-
     for (dirpath, dirnames, filenames) in os.walk(directory):
         for filename in filenames:
-            try:
-                matches = findMatches(filename,dirpath,index,sha1=sha1)
-            except Exception as error:
-                print("Issue evaluating checksum")
-                print(error)
-                continue
-            try:
-                if len(matches)==0:
-                    print("Missing:"+dirpath+"/"+filename)
-                else:
-                    if len(list(filter(lambda filed: filed['name'] == filename,matches)))==0:
-                        print("Renamed:"+dirpath+"/"+filename+"-->"+matches[0]['path'])
-                    else:
-                        print("Matched:"+dirpath+"/"+filename+"-->"+matches[0]['path'])
-                    if delete:
-                        print("Deleting: "+dirpath+"/"+filename)
-                        os.remove(dirpath+"/"+filename);
-            except Exception as error:
-                print("Unable to process file")
+            findFile(dirpath+"/"+filename,index,sha1=sha1,delete=delete)
+
 
 @click.group()
 def cli():
@@ -92,8 +95,11 @@ def buatool(target,reference,sha1,rm,load_index,save_index):
     if save_index != None:
         reference_index.saveIndex(save_index)
 
-
-    evaluateDirectory(target,reference_index,sha1=sha1,delete=rm)
+    if os.path.isfile(target):
+        print("checking single file")
+        findFile(target,reference_index,sha1=sha1,delete=rm)
+    else:
+        evaluateDirectory(target,reference_index,sha1=sha1,delete=rm)
 
 @cli.command()
 @click.option('--sha1',default=False,is_flag=True,help="Compare files using their sha1sum as well as the name")
