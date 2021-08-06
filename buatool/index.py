@@ -4,7 +4,7 @@ import os
 import sys
 import filecmp
 import datetime
-from util import calculateSHA1Sum
+from .util import calculateSHA1Sum
 
 
 class DirectoryIndex:

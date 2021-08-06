@@ -5,8 +5,8 @@ import sys
 import filecmp
 import hashlib
 import click
-from util import calculateSHA1Sum
-from index import DirectoryIndex
+from .util import calculateSHA1Sum
+from .index import DirectoryIndex
 
 
 def findMatches(filename,index,sha1=False):
