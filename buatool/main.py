@@ -68,6 +68,9 @@ def evaluateDirectory(directory,index,sha1=False,delete=False):
 
 @click.group()
 def cli():
+    """
+    A tool to perform comparison on the contents of directories
+    """
     pass
 
 
@@ -78,7 +81,10 @@ def cli():
 @click.option('--load-index',default=None,help="Location to save index to for later use")
 @click.argument('target')
 @click.argument('reference')
-def buatool(target,reference,sha1,rm,load_index,save_index):
+def compare(target,reference,sha1,rm,load_index,save_index):
+    """
+    Compares two directories
+    """
 
     reference_index = DirectoryIndex()
     if load_index != None:
@@ -106,6 +112,9 @@ def buatool(target,reference,sha1,rm,load_index,save_index):
 @click.argument('target')
 @click.argument('save_location')
 def buildIndex(target,save_location,sha1):
+    """
+    Generates an index for a directory to allow for later use
+    """
     index=DirectoryIndex()
     index.generateIndex(target,sha1=sha1)
     index.saveIndex(save_location)
@@ -114,6 +123,9 @@ def buildIndex(target,save_location,sha1):
 @cli.command()
 @click.argument('index')
 def index_info(index):
+    """
+    Prints info about a pregenerated index
+    """
     data_index = DirectoryIndex()
     data_index.loadIndex(index)
 
