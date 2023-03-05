@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="buatool",
-    version="0.1.0",
+    version="0.1.1",
     author="Tyler Ward",
     author_email="python@scorpia.co.uk",
     description="Tool to analyse backups",
