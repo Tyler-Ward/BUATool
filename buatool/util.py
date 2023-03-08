@@ -1,5 +1,6 @@
 import hashlib
 import os
+import subprocess
 
 def calculateSHA1Sum(filename):
     sha1 = hashlib.sha1()
@@ -12,3 +13,25 @@ def calculateSHA1Sum(filename):
                 break
             sha1.update(data)
     return sha1.hexdigest()
+
+
+def calculateMediaChecksum(filename):
+    if filename.split(".")[-1] not in ["mp3","flac"]:
+        return None
+    process = subprocess.Popen([
+        "ffmpeg",
+        "-i",
+        filename,
+        "-map","0:a",
+        "-codec","copy",
+        "-hide_banner",
+        "-loglevel","warning",
+        "-f","md5",
+        "-"
+        ],
+    stdout=subprocess.PIPE,
+    stderr=subprocess.PIPE)
+    stdout, stderr = process.communicate()
+    return stdout.decode("utf8").split('=')[1].strip()
+
+
