@@ -16,8 +16,6 @@ def calculateSHA1Sum(filename):
 
 
 def calculateMediaChecksum(filename):
-    if filename.split(".")[-1] not in ["mp3","flac"]:
-        return None
     process = subprocess.Popen([
         "ffmpeg",
         "-i",
@@ -32,6 +30,11 @@ def calculateMediaChecksum(filename):
     stdout=subprocess.PIPE,
     stderr=subprocess.PIPE)
     stdout, stderr = process.communicate()
-    return stdout.decode("utf8").split('=')[1].strip()
+    output_split = stdout.decode("utf8").strip().split('=')
+
+    if len(output_split)==2:
+        return output_split[1]
+    else:
+        return None
 
 
