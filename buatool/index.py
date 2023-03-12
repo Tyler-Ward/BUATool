@@ -13,7 +13,7 @@ class DirectoryIndex:
     directory_path = None
     features = list()
 
-    def generateIndex(self,directory,sha1=False,media_checksum=False):
+    def generateIndex(self,directory,features=[]):
         """Populates the index for a target directory"""
 
         self.index=[]
@@ -21,6 +21,7 @@ class DirectoryIndex:
         self.directory_path = os.path.abspath(directory)
         self.features = list()
 
+        # create main index
         for (dirpath, dirnames, filenames) in os.walk(directory):
             # extract relative path within index
             relpath = dirpath[len(directory):] if dirpath.startswith(directory) else dirpath
@@ -34,9 +35,11 @@ class DirectoryIndex:
                     self.index.append(filedetails)
                 except (FileNotFoundError,PermissionError):
                     print("Unable to index "+dirpath+"/"+filename)
-        if sha1:
+
+        # process additional feautures
+        if "sha1" in features:
             self.calculateChecksums()
-        if media_checksum:
+        if "media_checksum" in features:
             self.calculateMediaChecksums()
 
 
@@ -74,9 +77,6 @@ class DirectoryIndex:
 
     def findFile(self,name):
         return(list(filter(lambda filed: filed['name'] == name,self.index)))
-
-    def findHash(self,sha1):
-        return(list(filter(lambda filed: 'sha1' in filed and filed['sha1'] == sha1,self.index)))
 
     def findValue(self,field,value):
         return(list(filter(lambda filed: field in filed and filed[field] == value,self.index)))
