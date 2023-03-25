@@ -26,23 +26,22 @@ def findMatches(filename,index,features=[]):
     for match in namematches:
         if "sha1" in features and filesha1 == match['sha1']:
             if filecmp.cmp(filename,index.directory_path + "/" + match['path']):
-                matches.append(match)
+                matches.append(("Matched",match))
         if not "sha1" in features:
             if filecmp.cmp(filename,index.directory_path + "/" + match['path']):
-                matches.append(match)
+                matches.append(("Matched",match))
     if len(matches)>0:
         return matches
+
     if "sha1" in features:
         hashmatches = index.findValue("sha1",filesha1)
         for match in hashmatches:
             if filecmp.cmp(filename,index.directory_path + "/" + match['path']):
-                matches.append(match)
+                matches.append(("Renamed",match))
     if "media_checksum" in features:
         hashmatches = index.findValue("media_checksum",media_csum)
         for match in hashmatches:
-                matches.append(match)
-
-
+                matches.append(("Modified",match))
 
     return matches
 
@@ -58,16 +57,12 @@ def findFile(filename,index,features=[],delete=False):
         if len(matches)==0:
             print("Missing:"+filename)
         else:
-            if len(list(filter(lambda filed: filed['name'] == filename,matches)))==0:
-                print("Renamed:"+filename+"-->"+matches[0]['path'])
-            else:
-                print("Matched:"+filename+"-->"+matches[0]['path'])
+            print(matches[0][0]+":"+filename+"-->"+matches[0][1]['path'])
             if delete:
                 print("Deleting: "+filename)
                 os.remove(filename);
     except Exception as error:
         print("Unable to process file")
-
 
 
 def evaluateDirectory(directory,index,features=[],delete=False):
