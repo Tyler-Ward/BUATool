@@ -4,7 +4,7 @@ import os
 import sys
 import filecmp
 import datetime
-from .util import calculateSHA1Sum
+from .util import calculateSHA1Sum, calculateMediaChecksum
 
 
 class DirectoryIndex:
@@ -13,13 +13,15 @@ class DirectoryIndex:
     directory_path = None
     features = list()
 
-    def generateIndex(self,directory,sha1=False):
+    def generateIndex(self,directory,features=[]):
         """Populates the index for a target directory"""
 
         self.index=[]
         self.indexed_on = datetime.datetime.now()
         self.directory_path = os.path.abspath(directory)
+        self.features = list()
 
+        # create main index
         for (dirpath, dirnames, filenames) in os.walk(directory):
             # extract relative path within index
             relpath = dirpath[len(directory):] if dirpath.startswith(directory) else dirpath
@@ -33,8 +35,12 @@ class DirectoryIndex:
                     self.index.append(filedetails)
                 except (FileNotFoundError,PermissionError):
                     print("Unable to index "+dirpath+"/"+filename)
-        if sha1:
+
+        # process additional feautures
+        if "sha1" in features:
             self.calculateChecksums()
+        if "media_checksum" in features:
+            self.calculateMediaChecksums()
 
 
     def calculateChecksums(self):
@@ -52,11 +58,28 @@ class DirectoryIndex:
                 print("Unable to calculate checksum for ",self.directory_path + "/" + filedetails["path"])
             bar.update(bar.value+1)
 
+    def calculateMediaChecksums(self):
+        import progressbar
+
+        self.features.append("media_checksum")
+
+        bar = progressbar.ProgressBar(max_value=len(self.index),redirect_stdout=True)
+
+        for filedetails in self.index:
+            try:
+                csum = calculateMediaChecksum(self.directory_path + "/" + filedetails["path"])
+                if csum is not None:
+                    filedetails['media_checksum']=csum
+            except (ValueError,FileNotFoundError,PermissionError):
+                print("Unable to calculate checksum for ",self.directory_path + "/" + filedetails["path"])
+            bar.update(bar.value+1)
+
+
     def findFile(self,name):
         return(list(filter(lambda filed: filed['name'] == name,self.index)))
 
-    def findHash(self,sha1):
-        return(list(filter(lambda filed: 'sha1' in filed and filed['sha1'] == sha1,self.index)))
+    def findValue(self,field,value):
+        return(list(filter(lambda filed: field in filed and filed[field] == value,self.index)))
 
     def saveIndex(self,location):
         import json
