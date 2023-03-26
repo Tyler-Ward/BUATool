@@ -1,8 +1,6 @@
 #!/usr/bin/python3
 
 import os
-import sys
-import filecmp
 import datetime
 from .util import calculateSHA1Sum, calculateMediaChecksum
 
@@ -13,10 +11,10 @@ class DirectoryIndex:
     directory_path = None
     features = list()
 
-    def generateIndex(self,directory,features=[]):
+    def generateIndex(self, directory, features=[]):
         """Populates the index for a target directory"""
 
-        self.index=[]
+        self.index = []
         self.indexed_on = datetime.datetime.now()
         self.directory_path = os.path.abspath(directory)
         self.features = list()
@@ -27,13 +25,13 @@ class DirectoryIndex:
             relpath = dirpath[len(directory):] if dirpath.startswith(directory) else dirpath
             for filename in filenames:
                 try:
-                    filedetails={
-                            'name':filename,
-                            'folder':relpath,
-                            'path':relpath+"/"+filename if relpath else filename,
+                    filedetails = {
+                            'name': filename,
+                            'folder': relpath,
+                            'path': relpath+"/"+filename if relpath else filename,
                             }
                     self.index.append(filedetails)
-                except (FileNotFoundError,PermissionError):
+                except (FileNotFoundError, PermissionError):
                     print("Unable to index "+dirpath+"/"+filename)
 
         # process additional feautures
@@ -42,20 +40,19 @@ class DirectoryIndex:
         if "media_checksum" in features:
             self.calculateMediaChecksums()
 
-
     def calculateChecksums(self):
         import progressbar
 
         self.features.append("sha1")
 
-        bar = progressbar.ProgressBar(max_value=len(self.index),redirect_stdout=True)
+        bar = progressbar.ProgressBar(max_value=len(self.index), redirect_stdout=True)
 
         for filedetails in self.index:
             try:
                 # print(filedetails["fullpath"])
-                filedetails['sha1']=calculateSHA1Sum(self.directory_path + "/" + filedetails["path"])
-            except (ValueError,FileNotFoundError,PermissionError):
-                print("Unable to calculate checksum for ",self.directory_path + "/" + filedetails["path"])
+                filedetails['sha1'] = calculateSHA1Sum(self.directory_path + "/" + filedetails["path"])
+            except (ValueError, FileNotFoundError, PermissionError):
+                print("Unable to calculate checksum for ", self.directory_path + "/" + filedetails["path"])
             bar.update(bar.value+1)
 
     def calculateMediaChecksums(self):
@@ -63,39 +60,40 @@ class DirectoryIndex:
 
         self.features.append("media_checksum")
 
-        bar = progressbar.ProgressBar(max_value=len(self.index),redirect_stdout=True)
+        bar = progressbar.ProgressBar(max_value=len(self.index), redirect_stdout=True)
 
         for filedetails in self.index:
             try:
                 csum = calculateMediaChecksum(self.directory_path + "/" + filedetails["path"])
                 if csum is not None:
-                    filedetails['media_checksum']=csum
-            except (ValueError,FileNotFoundError,PermissionError):
-                print("Unable to calculate checksum for ",self.directory_path + "/" + filedetails["path"])
+                    filedetails['media_checksum'] = csum
+            except (ValueError, FileNotFoundError, PermissionError):
+                print("Unable to calculate checksum for ", self.directory_path + "/" + filedetails["path"])
             bar.update(bar.value+1)
 
+    def findFile(self, name):
+        return (list(filter(lambda filed: filed['name'] == name, self.index)))
 
-    def findFile(self,name):
-        return(list(filter(lambda filed: filed['name'] == name,self.index)))
+    def findValue(self, field, value):
+        if value is None:
+            return list()
+        return (list(filter(lambda filed: field in filed and filed[field] == value, self.index)))
 
-    def findValue(self,field,value):
-        return(list(filter(lambda filed: field in filed and filed[field] == value,self.index)))
-
-    def saveIndex(self,location):
+    def saveIndex(self, location):
         import json
-        with open(location,"w") as output:
+        with open(location, "w") as output:
             output_data = {
-                "directory" : self.directory_path,
-                "indexed_on" : self.indexed_on.isoformat(),
-                "features" : self.features,
-                "length" : len(self.index),
-                "index" : self.index,
+                "directory": self.directory_path,
+                "indexed_on": self.indexed_on.isoformat(),
+                "features": self.features,
+                "length": len(self.index),
+                "index": self.index,
                 }
-            json.dump(output_data,output)
+            json.dump(output_data, output)
 
-    def loadIndex(self,location):
+    def loadIndex(self, location):
         import json
-        with open(location,"r") as indexInput:
+        with open(location, "r") as indexInput:
             data = json.load(indexInput)
             self.directory_path = data["directory"]
             self.features = data["features"]
