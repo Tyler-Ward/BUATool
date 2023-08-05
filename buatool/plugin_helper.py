@@ -25,6 +25,12 @@ def find_plugins():
 
     return plugins
 
+def get_plugin(name):
+    selected_plugin = None
+    for plugin in discovered_plugins:
+        if plugin.name == name:
+            selected_plugin=plugin
+    return(plugin)
 
 
 discovered_plugins = find_plugins()
