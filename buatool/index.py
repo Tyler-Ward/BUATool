@@ -2,7 +2,8 @@
 
 import os
 import datetime
-from .util import calculateSHA1Sum, calculateMediaChecksum
+from .plugins.sha1.main import Sha1Checksum
+from .plugins.media_checksum.main import MediaChecksum
 
 
 class DirectoryIndex:
@@ -50,7 +51,7 @@ class DirectoryIndex:
         for filedetails in self.index:
             try:
                 # print(filedetails["fullpath"])
-                filedetails['sha1'] = calculateSHA1Sum(self.directory_path + "/" + filedetails["path"])
+                filedetails['sha1'] = SHA1Checksup.generateFileData(self.directory_path + "/" + filedetails["path"])
             except (ValueError, FileNotFoundError, PermissionError):
                 print("Unable to calculate checksum for ", self.directory_path + "/" + filedetails["path"])
             bar.update(bar.value+1)
@@ -64,7 +65,7 @@ class DirectoryIndex:
 
         for filedetails in self.index:
             try:
-                csum = calculateMediaChecksum(self.directory_path + "/" + filedetails["path"])
+                csum = MediaChecksum.generateFileData(self.directory_path + "/" + filedetails["path"])
                 if csum is not None:
                     filedetails['media_checksum'] = csum
             except (ValueError, FileNotFoundError, PermissionError):

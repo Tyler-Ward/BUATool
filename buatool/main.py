@@ -3,41 +3,28 @@
 import os
 import filecmp
 import click
-from .util import calculateSHA1Sum, calculateMediaChecksum
 from .index import DirectoryIndex
+
+from .plugins.sha1.main import Sha1Checksum
+from .plugins.media_checksum.main import MediaChecksum
 
 
 def findMatches(filename, index, features=[]):
 
     matches = []
-    if "sha1" in features:
-        filesha1 = calculateSHA1Sum(filename)
-        if filesha1 == "da39a3ee5e6b4b0d3255bfef95601890afd80709":
-            filesha1 = None
-
-    if "media_checksum" in features:
-        media_csum = calculateMediaChecksum(filename)
 
     namematches = index.findFile(filename.split("/")[-1])
     for match in namematches:
-        if "sha1" in features and filesha1 == match['sha1']:
-            if filecmp.cmp(filename, index.directory_path + "/" + match['path']):
-                matches.append(("Matched", match))
-        if "sha1" not in features:
-            if filecmp.cmp(filename, index.directory_path + "/" + match['path']):
-                matches.append(("Matched", match))
+        if filecmp.cmp(filename, index.directory_path + "/" + match['path']):
+            matches.append(("Matched", match))
     if len(matches) > 0:
         return matches
 
     if "sha1" in features:
-        hashmatches = index.findValue("sha1", filesha1)
-        for match in hashmatches:
-            if filecmp.cmp(filename, index.directory_path + "/" + match['path']):
-                matches.append(("Renamed", match))
+        matches.extend(Sha1Checksum.findMatches(filename, index))
+
     if "media_checksum" in features:
-        hashmatches = index.findValue("media_checksum", media_csum)
-        for match in hashmatches:
-            matches.append(("Modified", match))
+        matches.extend(MediaChecksum.findMatches(filename, index))
 
     return matches
 
