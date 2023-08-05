@@ -4,6 +4,7 @@ import os
 import filecmp
 import click
 from .index import DirectoryIndex
+from .plugin_helper import discovered_plugins
 
 from .plugins.sha1.main import Sha1Checksum
 from .plugins.media_checksum.main import MediaChecksum
@@ -145,8 +146,25 @@ def index_info(index):
         print("  " + feature)
 
 @cli.command()
-def pluggin_info():
-    print("Detected plugins")
+@click.argument('plugin_name', default="")
+def pluggin_info(plugin_name=""):
+    if plugin_name == "":
+        print("Detected plugins")
+        print("==========")
+
+        for plugin in discovered_plugins:
+            print(plugin.name)
+    else:
+        selected_plugin = None
+        for plugin in discovered_plugins:
+            if plugin.name == plugin_name:
+                selected_plugin = plugin
+
+        if selected_plugin is None:
+            print("unable to find plugin {}".format(plugin_name))
+            exit(1)
+
+        print(selected_plugin.__doc__)
 
 if __name__ == "__main__":
     cli()
