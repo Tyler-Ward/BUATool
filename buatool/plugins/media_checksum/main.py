@@ -8,6 +8,8 @@ class MediaChecksum:
       This plugin will create a checkum of a media files contents to alloww matching of media files with altered metadata
     """
 
+    name = "media_checksum"
+
     @staticmethod
     def generateFileData(filename):
         process = subprocess.Popen(

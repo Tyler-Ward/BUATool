@@ -9,6 +9,8 @@ class Sha1Checksum:
       This plugin will create a checkum of a media files contents to alloww matching of media files with altered metadata
     """
 
+    name = "sha1"
+
     @staticmethod
     def generateFileData(filename):
         sha1 = hashlib.sha1()

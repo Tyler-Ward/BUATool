@@ -9,7 +9,7 @@ from .plugins.sha1.main import Sha1Checksum
 from .plugins.media_checksum.main import MediaChecksum
 
 
-def findMatches(filename, index, features=[]):
+def findMatches(filename, index, plugins=[]):
 
     matches = []
 
@@ -20,18 +20,15 @@ def findMatches(filename, index, features=[]):
     if len(matches) > 0:
         return matches
 
-    if "sha1" in features:
-        matches.extend(Sha1Checksum.findMatches(filename, index))
-
-    if "media_checksum" in features:
-        matches.extend(MediaChecksum.findMatches(filename, index))
+    for plugin in plugins:
+        matches.extend(plugin.findMatches(filename, index))
 
     return matches
 
 
-def findFile(filename, index, features=[], delete=False):
+def findFile(filename, index, plugins=[], delete=False):
     try:
-        matches = findMatches(filename, index, features=features)
+        matches = findMatches(filename, index, plugins=plugins)
     except Exception as error:
         print("Issue evaluating checksum")
         print(error)
@@ -48,11 +45,11 @@ def findFile(filename, index, features=[], delete=False):
         print("Unable to process file")
 
 
-def evaluateDirectory(directory, index, features=[], delete=False):
+def evaluateDirectory(directory, index, plugins=[], delete=False):
     """Evaluates a directory an produces a result list"""
     for (dirpath, dirnames, filenames) in os.walk(directory):
         for filename in filenames:
-            findFile(dirpath+"/"+filename, index, features=features, delete=delete)
+            findFile(dirpath+"/"+filename, index, plugins=plugins, delete=delete)
 
 
 @click.group()
@@ -76,35 +73,35 @@ def compare(target, reference, sha1, media_checksum, rm, load_index, save_index)
     Compares two directories
     """
 
-    features = []
+    plugins = []
 
     if sha1:
-        features.append("sha1")
+        plugins.append(Sha1Checksum)
     if media_checksum:
-        features.append("media_checksum")
+        plugins.append(MediaChecksum)
 
     reference_index = DirectoryIndex()
     if load_index is not None:
         print("Loading Index from file")
         reference_index.loadIndex(load_index)
-        for feature in features:
-            if feature not in reference_index.features:
+        for plugin in plugins:
+            if plugin.name not in reference_index.features:
                 print("Index is missing {} feature")
                 exit()
 
         print("Index loaded")
     else:
         print("Indexing files on disk")
-        reference_index.generateIndex(reference, features=features)
+        reference_index.generateIndex(reference, plugins=plugins)
         print("Indexing generated")
     if save_index is not None:
         reference_index.saveIndex(save_index)
 
     if os.path.isfile(target):
         print("checking single file")
-        findFile(target, reference_index, features=features, delete=rm)
+        findFile(target, reference_index, plugins=plugins, delete=rm)
     else:
-        evaluateDirectory(target, reference_index, features=features, delete=rm)
+        evaluateDirectory(target, reference_index, plugins=plugins, delete=rm)
 
 
 @cli.command()
@@ -117,14 +114,14 @@ def buildIndex(target, save_location, sha1, media_checksum):
     Generates an index for a directory to allow for later use
     """
 
-    features = []
+    plugins = []
     if sha1:
-        features.append("sha1")
+        plugins.append(Sha1Checksum)
     if media_checksum:
-        features.append("media_checksum")
+        plugins.append(MediaChecksum)
 
     index = DirectoryIndex()
-    index.generateIndex(target, features=features)
+    index.generateIndex(target, plugins=plugins)
     index.saveIndex(save_location)
 
 
@@ -147,6 +144,9 @@ def index_info(index):
     for feature in data_index.features:
         print("  " + feature)
 
+@cli.command()
+def pluggin_info():
+    print("Detected plugins")
 
 if __name__ == "__main__":
     cli()
