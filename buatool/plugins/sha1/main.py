@@ -1,5 +1,6 @@
 import hashlib
 import os
+import filecmp
 
 
 class Sha1Checksum:
@@ -35,7 +36,7 @@ class Sha1Checksum:
         
         hashmatches = index.findValue("sha1", filesha1)
         for checksum_match in hashmatches:
-            if filecmp.cmp(filename, index.directory_path + "/" + match['path']):
-                matches.append(("Renamed", match))
+            if filecmp.cmp(filename, index.directory_path + "/" + checksum_match['path']):
+                matches.append(("Renamed", checksum_match))
 
         return matches
