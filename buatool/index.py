@@ -2,7 +2,6 @@
 
 import os
 import datetime
-from .util import calculateSHA1Sum, calculateMediaChecksum
 
 
 class DirectoryIndex:
@@ -11,7 +10,7 @@ class DirectoryIndex:
     directory_path = None
     features = list()
 
-    def generateIndex(self, directory, features=[]):
+    def generateIndex(self, directory, plugins=[]):
         """Populates the index for a target directory"""
 
         self.index = []
@@ -34,41 +33,22 @@ class DirectoryIndex:
                 except (FileNotFoundError, PermissionError):
                     print("Unable to index "+dirpath+"/"+filename)
 
-        # process additional feautures
-        if "sha1" in features:
-            self.calculateChecksums()
-        if "media_checksum" in features:
-            self.calculateMediaChecksums()
+        # process pluggins
+        for plugin in plugins:
+            self.processPlugin(plugin)
 
-    def calculateChecksums(self):
+    def processPlugin(self, plugin):
         import progressbar
-
-        self.features.append("sha1")
+        print("Processing {}".format(plugin.name))
+        self.features.append(plugin.name)
 
         bar = progressbar.ProgressBar(max_value=len(self.index), redirect_stdout=True)
 
         for filedetails in self.index:
             try:
-                # print(filedetails["fullpath"])
-                filedetails['sha1'] = calculateSHA1Sum(self.directory_path + "/" + filedetails["path"])
+                filedetails[plugin.name] = plugin.generateFileData(self.directory_path + "/" + filedetails["path"])
             except (ValueError, FileNotFoundError, PermissionError):
-                print("Unable to calculate checksum for ", self.directory_path + "/" + filedetails["path"])
-            bar.update(bar.value+1)
-
-    def calculateMediaChecksums(self):
-        import progressbar
-
-        self.features.append("media_checksum")
-
-        bar = progressbar.ProgressBar(max_value=len(self.index), redirect_stdout=True)
-
-        for filedetails in self.index:
-            try:
-                csum = calculateMediaChecksum(self.directory_path + "/" + filedetails["path"])
-                if csum is not None:
-                    filedetails['media_checksum'] = csum
-            except (ValueError, FileNotFoundError, PermissionError):
-                print("Unable to calculate checksum for ", self.directory_path + "/" + filedetails["path"])
+                print("Unable to calculate {} plugin data for {}/{}".format(plugin.name,self.directory_path,filedetails["path"]))
             bar.update(bar.value+1)
 
     def findFile(self, name):

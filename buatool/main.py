@@ -3,48 +3,30 @@
 import os
 import filecmp
 import click
-from .util import calculateSHA1Sum, calculateMediaChecksum
 from .index import DirectoryIndex
+from .plugin_helper import discovered_plugins, get_plugin
 
 
-def findMatches(filename, index, features=[]):
+def findMatches(filename, index, plugins=[]):
 
     matches = []
-    if "sha1" in features:
-        filesha1 = calculateSHA1Sum(filename)
-        if filesha1 == "da39a3ee5e6b4b0d3255bfef95601890afd80709":
-            filesha1 = None
-
-    if "media_checksum" in features:
-        media_csum = calculateMediaChecksum(filename)
 
     namematches = index.findFile(filename.split("/")[-1])
     for match in namematches:
-        if "sha1" in features and filesha1 == match['sha1']:
-            if filecmp.cmp(filename, index.directory_path + "/" + match['path']):
-                matches.append(("Matched", match))
-        if "sha1" not in features:
-            if filecmp.cmp(filename, index.directory_path + "/" + match['path']):
-                matches.append(("Matched", match))
+        if filecmp.cmp(filename, index.directory_path + "/" + match['path']):
+            matches.append(("Matched", match))
     if len(matches) > 0:
         return matches
 
-    if "sha1" in features:
-        hashmatches = index.findValue("sha1", filesha1)
-        for match in hashmatches:
-            if filecmp.cmp(filename, index.directory_path + "/" + match['path']):
-                matches.append(("Renamed", match))
-    if "media_checksum" in features:
-        hashmatches = index.findValue("media_checksum", media_csum)
-        for match in hashmatches:
-            matches.append(("Modified", match))
+    for plugin in plugins:
+        matches.extend(plugin.findMatches(filename, index))
 
     return matches
 
 
-def findFile(filename, index, features=[], delete=False):
+def findFile(filename, index, plugins=[], delete=False):
     try:
-        matches = findMatches(filename, index, features=features)
+        matches = findMatches(filename, index, plugins=plugins)
     except Exception as error:
         print("Issue evaluating checksum")
         print(error)
@@ -61,11 +43,25 @@ def findFile(filename, index, features=[], delete=False):
         print("Unable to process file")
 
 
-def evaluateDirectory(directory, index, features=[], delete=False):
+def evaluateDirectory(directory, index, plugins=[], delete=False):
     """Evaluates a directory an produces a result list"""
     for (dirpath, dirnames, filenames) in os.walk(directory):
         for filename in filenames:
-            findFile(dirpath+"/"+filename, index, features=features, delete=delete)
+            findFile(dirpath+"/"+filename, index, plugins=plugins, delete=delete)
+
+def getPlugins(plugin_names):
+    if plugin_names:
+        plugins = []
+        for plugin_name in plugins:
+            found_plugin = get_plugin(plugin_name)
+            if found_plugin is None:
+                print("unable to load plugin {}".format(plugin_name))
+                exit(1)
+            plugins.append(found_plugin)
+
+    else:
+        plugins = discovered_plugins
+    return plugins
 
 
 @click.group()
@@ -77,67 +73,56 @@ def cli():
 
 
 @cli.command()
-@click.option('--sha1', default=False, is_flag=True, help="Compare files using their sha1sum as well as the name")
-@click.option('--media_checksum', default=False, is_flag=True, help="Compare media files using the md5 of the contents")
 @click.option('--rm', default=False, is_flag=True, help="automaticly delete matched files")
 @click.option('--save-index', default=None, help="Location to save index to for later use")
 @click.option('--load-index', default=None, help="Location to save index to for later use")
+@click.option('--plugin', '-p', "plugin_names", multiple=True, help="specify plugin to use, , default is to use all plugins")
 @click.argument('target')
 @click.argument('reference')
-def compare(target, reference, sha1, media_checksum, rm, load_index, save_index):
+def compare(target, reference, plugin_names, rm, load_index, save_index):
     """
     Compares two directories
     """
 
-    features = []
-
-    if sha1:
-        features.append("sha1")
-    if media_checksum:
-        features.append("media_checksum")
+    plugins = getPlugins(plugin_names)
 
     reference_index = DirectoryIndex()
     if load_index is not None:
         print("Loading Index from file")
         reference_index.loadIndex(load_index)
-        for feature in features:
-            if feature not in reference_index.features:
+        for plugin in plugins:
+            if plugin.name not in reference_index.features:
                 print("Index is missing {} feature")
                 exit()
 
         print("Index loaded")
     else:
         print("Indexing files on disk")
-        reference_index.generateIndex(reference, features=features)
+        reference_index.generateIndex(reference, plugins=plugins)
         print("Indexing generated")
     if save_index is not None:
         reference_index.saveIndex(save_index)
 
     if os.path.isfile(target):
         print("checking single file")
-        findFile(target, reference_index, features=features, delete=rm)
+        findFile(target, reference_index, plugins=plugins, delete=rm)
     else:
-        evaluateDirectory(target, reference_index, features=features, delete=rm)
+        evaluateDirectory(target, reference_index, plugins=plugins, delete=rm)
 
 
 @cli.command()
-@click.option('--sha1', default=False, is_flag=True, help="Compare files using their sha1sum as well as the name")
-@click.option('--media_checksum', default=False, is_flag=True, help="Compare media files using the md5 of the contents")
+@click.option('--plugin', '-p', "plugin_names", multiple=True, help="specify plugin to use, , default is to use all plugins")
 @click.argument('target')
 @click.argument('save_location')
-def buildIndex(target, save_location, sha1, media_checksum):
+def buildIndex(target, save_location, plugin_names):
     """
     Generates an index for a directory to allow for later use
     """
 
-    features = []
-    if sha1:
-        features.append("sha1")
-    if media_checksum:
-        features.append("media_checksum")
+    plugins = getPlugins(plugin_names)
 
     index = DirectoryIndex()
-    index.generateIndex(target, features=features)
+    index.generateIndex(target, plugins=plugins)
     index.saveIndex(save_location)
 
 
@@ -160,6 +145,23 @@ def index_info(index):
     for feature in data_index.features:
         print("  " + feature)
 
+@cli.command()
+@click.argument('plugin_name', default="")
+def pluggin_info(plugin_name=""):
+    if plugin_name == "":
+        print("Detected plugins")
+        print("==========")
+
+        for plugin in discovered_plugins:
+            print(plugin.name)
+    else:
+        selected_plugin = get_plugin(plugin_name)
+
+        if selected_plugin is None:
+            print("unable to find plugin {}".format(plugin_name))
+            exit(1)
+
+        print(selected_plugin.__doc__)
 
 if __name__ == "__main__":
     cli()
