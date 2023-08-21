@@ -19,23 +19,79 @@ class DirectoryIndex:
         self.features = list()
 
         # create main index
-        for (dirpath, dirnames, filenames) in os.walk(directory):
-            # extract relative path within index
-            relpath = dirpath[len(directory):] if dirpath.startswith(directory) else dirpath
-            for filename in filenames:
-                try:
-                    filedetails = {
-                            'name': filename,
-                            'folder': relpath,
-                            'path': relpath+"/"+filename if relpath else filename,
-                            }
-                    self.index.append(filedetails)
-                except (FileNotFoundError, PermissionError):
-                    print("Unable to index "+dirpath+"/"+filename)
+        self.generateFileList()
 
         # process pluggins
         for plugin in plugins:
             self.processPlugin(plugin)
+
+    def updateIndex(self, directory=None, plugins=[]):
+
+        oldindex = self.index.copy()
+        oldfeatures = self.features.copy()
+
+        self.indexed_on = datetime.datetime.now()
+        self.features = list()
+
+        if directory and directory != "":
+            if directory != self.directory_path:
+                print("updating index path")
+                self.directory_path = os.path.abspath(directory)
+
+        # todo check plugins
+
+        # create new index
+        self.generateFileList()
+
+        # import old data
+        files_to_generate = []
+
+        for fileid, filedetails in enumerate(self.index):
+            previous = list(filter(lambda filed: filed['path'] == filedetails["path"], oldindex))
+            if previous and previous[0].get("modified",0)==filedetails["modified"]:
+                filedetails = previous[0]
+            else:
+                files_to_generate.append(fileid)
+
+
+
+        # process pluggins
+        for plugin in plugins:
+            if plugin.name in oldfeatures:
+                import progressbar
+                print("Updating {}".format(plugin.name))
+                self.features.append(plugin.name)
+
+                bar = progressbar.ProgressBar(max_value=len(files_to_generate), redirect_stdout=True)
+                for fileid in files_to_generate:
+                    filedetails = self.index[fileid]
+                    try:
+                        filedetails[plugin.name] = plugin.generateFileData(self.directory_path + "/" + filedetails["path"])
+                    except (ValueError, FileNotFoundError, PermissionError):
+                        print("Unable to calculate {} plugin data for {}/{}".format(plugin.name,self.directory_path,filedetails["path"]))
+                    bar.update(bar.value+1)
+            else:
+                self.processPlugin(plugin)
+
+
+    def generateFileList(self):
+        self.index = []
+        for (dirpath, dirnames, filenames) in os.walk(self.directory_path):
+            # extract relative path within index
+            relpath = dirpath[len(self.directory_path):] if dirpath.startswith(self.directory_path) else dirpath
+            for filename in filenames:
+                try:
+                    filepath = relpath+"/"+filename if relpath else filename
+                    filedetails = {
+                            'name': filename,
+                            'folder': relpath,
+                            'path': filepath,
+                            'modified': os.path.getmtime(self.directory_path+"/"+filepath)
+                            }
+                    self.index.append(filedetails)
+                except (FileNotFoundError, PermissionError):
+                    print("Unable to index {}".format(fullpath))
+
 
     def processPlugin(self, plugin):
         import progressbar

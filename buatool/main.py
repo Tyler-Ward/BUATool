@@ -125,6 +125,21 @@ def buildIndex(target, save_location, plugin_names):
     index.generateIndex(target, plugins=plugins)
     index.saveIndex(save_location)
 
+@cli.command()
+@click.option('--plugin', '-p', "plugin_names", multiple=True, help="specify plugin to use, , default is to use all plugins")
+@click.argument('index')
+@click.argument('target', default="")
+def update_index(index, plugin_names, target=None):
+    """
+    Updates an index with new changes
+    """
+
+    plugins = getPlugins(plugin_names)
+
+    data_index = DirectoryIndex()
+    data_index.loadIndex(index)
+    data_index.updateIndex(target, plugins=plugins)
+    data_index.saveIndex(index)
 
 @cli.command()
 @click.argument('index')
