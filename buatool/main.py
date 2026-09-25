@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 import os
+import sys
 import filecmp
 import click
 from .index import DirectoryIndex
@@ -42,8 +43,8 @@ def findFile(filename, index, plugins=[], delete=False):
             if delete:
                 print("Deleting: "+filename)
                 os.remove(filename)
-    except Exception:
-        print("Unable to process file")
+    except Exception as error:
+        print("Unable to process file: {} ({})".format(filename, error))
 
 
 def evaluateDirectory(directory, index, plugins=[], delete=False):
@@ -72,7 +73,8 @@ def cli():
     """
     A tool to perform comparison on the contents of directories
     """
-    pass
+    # switch the shell to utf8 to avoid problems printing unicode file names
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 
 @cli.command()
