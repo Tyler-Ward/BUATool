@@ -19,7 +19,10 @@ def findMatches(filename, index, plugins=[]):
         return matches
 
     for plugin in plugins:
-        matches.extend(plugin.findMatches(filename, index))
+        try:
+            matches.extend(plugin.findMatches(filename, index))
+        except Exception as error:
+            print("{} plugin failed for {}: {}".format(plugin.name, filename, error))
 
     return matches
 
@@ -28,7 +31,7 @@ def findFile(filename, index, plugins=[], delete=False):
     try:
         matches = findMatches(filename, index, plugins=plugins)
     except Exception as error:
-        print("Issue evaluating checksum")
+        print("Issue evaluating checksum:"+filename)
         print(error)
         return
     try:
@@ -52,7 +55,7 @@ def evaluateDirectory(directory, index, plugins=[], delete=False):
 def getPlugins(plugin_names):
     if plugin_names:
         plugins = []
-        for plugin_name in plugins:
+        for plugin_name in plugin_names:
             found_plugin = get_plugin(plugin_name)
             if found_plugin is None:
                 print("unable to load plugin {}".format(plugin_name))
@@ -92,7 +95,7 @@ def compare(target, reference, plugin_names, rm, load_index, save_index):
         reference_index.loadIndex(load_index)
         for plugin in plugins:
             if plugin.name not in reference_index.features:
-                print("Index is missing {} feature")
+                print("Index is missing {} feature".format(plugin.name))
                 exit()
 
         print("Index loaded")

@@ -30,7 +30,7 @@ def get_plugin(name):
     for plugin in discovered_plugins:
         if plugin.name == name:
             selected_plugin=plugin
-    return(plugin)
+    return(selected_plugin)
 
 
 discovered_plugins = find_plugins()
